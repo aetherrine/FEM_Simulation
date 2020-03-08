@@ -1,3 +1,0 @@
-/mnt/c/Users/Aether/Downloads/UCSB/CS 180/FEM_project/build/CMakeFiles/rebuild_cache.dir
-/mnt/c/Users/Aether/Downloads/UCSB/CS 180/FEM_project/build/CMakeFiles/FEM.dir
-/mnt/c/Users/Aether/Downloads/UCSB/CS 180/FEM_project/build/CMakeFiles/edit_cache.dir

@@ -1,1 +1,0 @@
-/usr/bin/c++     CMakeFiles/FEM.dir/main.cpp.o  -o FEM 
