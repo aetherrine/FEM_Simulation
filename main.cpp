@@ -5,6 +5,26 @@
 #include <vector>
 #include <fstream>
 
+void outputOBJ(std::vector<Particle> particle_list, std::string original_file, int idx){
+    std::ifstream in(original_file);
+    std::ofstream out("cube_"+std::to_string(idx)+".obj");
+    int i = 0;
+    if (in.is_open()){
+        std::string line;
+        while (getline(in, line)){
+            if (line.substr(0,2) != "v "){
+                out << line << "\n";
+            }
+            else{
+                out << "v";
+                out << " " << particle_list[i].x();
+                out << " " << particle_list[i].y();
+                out << " " << particle_list[i].z() << "\n";
+            }
+        }
+    }
+}
+
 void precomputation(std::vector<Tetrahedral> meshes, std::vector<Matrix3f>& B, std::vector<float>& W){
     for (int i=0; i<meshes.size(); i++){
         Matrix3f D;
@@ -51,7 +71,7 @@ int main(){
         }
         file.close();
     }
-
+    outputOBJ(particle_list, OBJ_PATH, 0);
     // TODO: insert all 5*8 volume tetrahedral meshes. 
     tetrahedral_list.push_back(Tetrahedral(particle_list[0], particle_list[0], particle_list[0], particle_list[0]));
 
