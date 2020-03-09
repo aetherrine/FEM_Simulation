@@ -5,8 +5,13 @@
 - install [Eigen](https://eigen.tuxfamily.org/dox/GettingStarted.html) under library folder
 
 `mkdir build`
+
 `cd build`
+
 `mkdir output`
+
 `cmake ..`
+
 `make`
+
 `./FEM`
