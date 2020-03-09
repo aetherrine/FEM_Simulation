@@ -14,8 +14,4 @@ public:
         v[3] = v3;
     }
 
-    Particle x() const { return v[0]; }
-    Particle y() const { return v[1]; }
-    Particle z() const { return v[2]; }
-
 };

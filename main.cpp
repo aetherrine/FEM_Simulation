@@ -5,32 +5,23 @@
 #include <vector>
 #include <fstream>
 
-// void precomputation(std::vector<Tetrahedral*> meshes, std::vector<Matrix3f>& B, std::vector<float>& W){
-//     for (int i=0; i<meshes.size(); i++){
-//         Matrix3f D;
-//         D << meshes[i][0].x()-meshes[i][3].x(), meshes[i][1].x()-meshes[i][3].x(), meshes[i][2].x()-meshes[i][3].x(),
-//              meshes[i][0].y()-meshes[i][3].y(), meshes[i][1].y()-meshes[i][3].y(), meshes[i][2].y()-meshes[i][3].y(),
-//              meshes[i][0].z()-meshes[i][3].z(), meshes[i][1].z()-meshes[i][3].z(), meshes[i][2].z()-meshes[i][3].z();
-//         B[i] = D.inverse();
-//         W[i] = 1/6 * D.determinant();
-//     }
-// }
+void precomputation(std::vector<Tetrahedral> meshes, std::vector<Matrix3f>& B, std::vector<float>& W){
+    for (int i=0; i<meshes.size(); i++){
+        Matrix3f D;
+        D << meshes[i].v[0].x()-meshes[i].v[3].x(), meshes[i].v[1].x()-meshes[i].v[3].x(), meshes[i].v[2].x()-meshes[i].v[3].x(),
+             meshes[i].v[0].y()-meshes[i].v[3].y(), meshes[i].v[1].y()-meshes[i].v[3].y(), meshes[i].v[2].y()-meshes[i].v[3].y(),
+             meshes[i].v[0].z()-meshes[i].v[3].z(), meshes[i].v[1].z()-meshes[i].v[3].z(), meshes[i].v[2].z()-meshes[i].v[3].z();
+        B[i] = D.inverse();
+        W[i] = 1/6 * D.determinant();
+    }
+}
 
-// // TODO || !TODO
-// bool loader(std::string Path){
-//     if (Path.substr(Path.size() - 4, 4) != ".obj")
-//         return false;
-
-//     std::ifstream file(Path);
-
-//     if (!file.is_open())
-//         return false;
-
-//     std::string curline;
-//     while (std::getline(file, curline)){
-
-//     }
-// }
+void ComputeElasticForces(std::vector<Tetrahedral> meshes, std::vector<Matrix3f>& B, std::vector<float>& W){
+    Vector3f elastic_force(0,0,0);
+    for (int i=0; i<meshes.size(); i++){
+        Matrix3f D;
+    }
+}
 
 int main(){
     std::string OBJ_PATH = "../models/yet_another_cube.obj";
@@ -60,10 +51,14 @@ int main(){
         }
         file.close();
     }
-    // for (auto i : particle_list)
-    //     std::cout<<i.position[0]<<", "<<i.position[1]<<", "<<i.position[2]<<std::endl;
 
+    // TODO: insert all 5*8 volume tetrahedral meshes. 
     tetrahedral_list.push_back(Tetrahedral(particle_list[0], particle_list[0], particle_list[0], particle_list[0]));
+
+
+
+
+
 
     // hardcoded volume tetrahedral mesh
     // Vector3f origin(0,0,0);
