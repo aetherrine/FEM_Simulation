@@ -54,57 +54,9 @@ bool compareVertex(Particle p1, Particle p2) {
     return p1.z() < p2.z();
 }
 
-void getCubeList(std::vector<std::vector<Particle>> cube, int n, int x, int y, int z) {
-    if (n == 0) return;
-
-    std::vector<Particle> tmp;
-    Particle p1 = Particle(x, y, z);
-    tmp.push_back(p1);
-    Particle p2 = Particle();
-    p2.x() = x+1;
-    p2.y() = y;
-    p2.z() = z;
-    tmp.push_back(p2);
-    Particle p3 = Particle();
-    p3.x() = x;
-    p3.y() = y;
-    p3.z() = z+1;
-    tmp.push_back(p3);
-    Particle p4 = Particle();
-    p4.x() = x+1;
-    p4.y() = y;
-    p4.z() = z+1;
-    tmp.push_back(p4)
-
-    Particle p5 = Particle();
-    p5.x() = x;
-    p5.y() = y+1;
-    p5.z() = z;
-    tmp.push_back(p5);
-    Particle p6 = Particle();
-    p6.x() = x+1;
-    p6.y() = y+1;
-    p6.z() = z;
-    tmp.push_back(p6);
-    Particle p7 = Particle();
-    p7.x() = x;
-    p7.y() = y+1;
-    p7.z() = z+1;
-    tmp.push_back(p7);
-    Particle p8 = Particle();
-    p8.x() = x+1;
-    p8.y() = y+1;
-    p8.z() = z+1;
-    tmp.push_back(p8)
-
-    cube.push_back(tmp);
-}
-
-
 int main(){
     std::string OBJ_PATH = "../models/yet_another_cube.obj";
     std::vector<Tetrahedral> tetrahedral_list;
-    // std::vector<MyCube> cube_list;
     std::vector<Particle> particle_list;
 
     std::ifstream file(OBJ_PATH);
@@ -129,51 +81,39 @@ int main(){
             particle_list.push_back(p);
         }
         file.close();
-
-
-
-
-
-
-
-
-
     }
 
     // TODO: insert all 5*8 volume tetrahedral meshes.
-
-
-    //-------------------------------------------------------------------- sorting x y z -----------------------------------------------
-    for (int i = 0; i < particle_list.size(); i++) {
-        std::cout << "particle point: " << particle_list[i].x() << ", "<< particle_list[i].y()<< ", "<< particle_list[i].z() << std::endl;
-    }
-    std::cout << "particle size: " << particle_list.size() << '\n';
-
-
     sort(particle_list.begin(), particle_list.end(), compareVertex);
 
-    for (int i = 0; i < particle_list.size(); i++) {
-        std::cout << "particle point: " << particle_list[i].x() << ", "<< particle_list[i].y()<< ", "<< particle_list[i].z() << std::endl;
+    int offset = 0;
+    for (int i=0; i<2; i++){
+        for (int j=0; j<2; j++){
+            for (int k=0; k<2; k++){
+                Tetrahedral tetMesh1(particle_list[0+offset],particle_list[3+offset],particle_list[4+offset],particle_list[12+offset]);
+                Tetrahedral tetMesh2(particle_list[0+offset],particle_list[9+offset],particle_list[10+offset],particle_list[12+offset]);
+                Tetrahedral tetMesh3(particle_list[0+offset],particle_list[12+offset],particle_list[13+offset],particle_list[4+offset]);
+                Tetrahedral tetMesh4(particle_list[0+offset],particle_list[1+offset],particle_list[4+offset],particle_list[10+offset]);
+                Tetrahedral tetMesh5(particle_list[0+offset],particle_list[4+offset],particle_list[10+offset],particle_list[12+offset]);
+
+                tetrahedral_list.push_back(tetMesh1);
+                tetrahedral_list.push_back(tetMesh2);
+                tetrahedral_list.push_back(tetMesh3);
+                tetrahedral_list.push_back(tetMesh4);
+                tetrahedral_list.push_back(tetMesh5);
+                offset = 9;
+            }
+            offset = 3;
+        }
+        offset = 1;
     }
-    std::cout << "particle size: " << particle_list.size() << '\n';
 
-    //----------------------------------------------------------------- generate cube ---------------------------------------------------
-    std::vector<std::vector<Particle>> cube_list;
-    int n = 2;
-    getCubeList(cube_list, n, 0, 0, 0);
-    std::cout << "check it out " << cube_list.size()<< '\n';
-
-
-
-
-
-
-
-
-
-
-
-
+    // Test mesh loading
+    for (int i=0; i<4; i++){
+        std::cout<< tetrahedral_list[20].v[i].x() << ", "
+                 << tetrahedral_list[20].v[i].y() << ", "
+                 << tetrahedral_list[20].v[i].z() << ", " <<std::endl;
+    }
 
 
     // Test output for Houdini
