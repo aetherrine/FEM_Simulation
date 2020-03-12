@@ -30,19 +30,50 @@ void outputOBJ(std::vector<Particle> particle_list, std::string original_file, i
 
 void precomputation(std::vector<Tetrahedral> meshes, std::vector<Matrix3f>& B, std::vector<float>& W){
     for (int i=0; i<meshes.size(); i++){
-        Matrix3f D;
-        D << meshes[i].v[0].x()-meshes[i].v[3].x(), meshes[i].v[1].x()-meshes[i].v[3].x(), meshes[i].v[2].x()-meshes[i].v[3].x(),
-             meshes[i].v[0].y()-meshes[i].v[3].y(), meshes[i].v[1].y()-meshes[i].v[3].y(), meshes[i].v[2].y()-meshes[i].v[3].y(),
-             meshes[i].v[0].z()-meshes[i].v[3].z(), meshes[i].v[1].z()-meshes[i].v[3].z(), meshes[i].v[2].z()-meshes[i].v[3].z();
-        B[i] = D.inverse();
-        W[i] = 1/6 * D.determinant();
+        Matrix3f D_m;
+        D_m << meshes[i].v[0].x()-meshes[i].v[3].x(), meshes[i].v[1].x()-meshes[i].v[3].x(), meshes[i].v[2].x()-meshes[i].v[3].x(),
+               meshes[i].v[0].y()-meshes[i].v[3].y(), meshes[i].v[1].y()-meshes[i].v[3].y(), meshes[i].v[2].y()-meshes[i].v[3].y(),
+               meshes[i].v[0].z()-meshes[i].v[3].z(), meshes[i].v[1].z()-meshes[i].v[3].z(), meshes[i].v[2].z()-meshes[i].v[3].z();
+        B[i] = D_m.inverse();
+        W[i] = 1/6 * D_m.determinant();
     }
 }
 
-void ComputeElasticForces(std::vector<Tetrahedral> meshes, std::vector<Matrix3f>& B, std::vector<float>& W){
-    Vector3f elastic_force(0,0,0);
-    for (int i=0; i<meshes.size(); i++){
-        Matrix3f D;
+Matrix3f VK_material(Matrix3f deform_grad, Matrix3f delta_deform_grad){
+    Matrix3f I = Matrix3f::Identity(3,3);
+
+    Matrix3f energy = 1/2 * (deform_grad.transpose()*deform_grad - I);
+    Matrix3f delta_energy = 1/2 * (delta_deform_grad.transpose()*deform_grad + deform_grad.transpose()*delta_deform_grad);
+    Matrix3f delta_p = delta_deform_grad*(2*0.1785*energy+0.7141*energy.trace()*I) + deform_grad*(2*0.1785*delta_energy+0.7141*delta_energy.trace()*I);
+    return delta_p;
+}
+
+void ComputeForceDifferentials(std::vector<Tetrahedral> new_meshes, std::vector<Matrix3f>& B, std::vector<float>& W){
+    for (int i=0; i<new_meshes.size(); i++){
+        Matrix3f D_s;
+        D_s << new_meshes[i].v[0].x()-new_meshes[i].v[3].x(), new_meshes[i].v[1].x()-new_meshes[i].v[3].x(), new_meshes[i].v[2].x()-new_meshes[i].v[3].x(),
+               new_meshes[i].v[0].y()-new_meshes[i].v[3].y(), new_meshes[i].v[1].y()-new_meshes[i].v[3].y(), new_meshes[i].v[2].y()-new_meshes[i].v[3].y(),
+               new_meshes[i].v[0].z()-new_meshes[i].v[3].z(), new_meshes[i].v[1].z()-new_meshes[i].v[3].z(), new_meshes[i].v[2].z()-new_meshes[i].v[3].z();
+        
+        Matrix3f D_s_delta;
+        D_s_delta << new_meshes[i].v[0].displacement[0]-new_meshes[i].v[3].displacement[0],
+                     new_meshes[i].v[1].displacement[0]-new_meshes[i].v[3].displacement[0],
+                     new_meshes[i].v[2].displacement[0]-new_meshes[i].v[3].displacement[0],
+                     new_meshes[i].v[0].displacement[1]-new_meshes[i].v[3].displacement[1],
+                     new_meshes[i].v[1].displacement[1]-new_meshes[i].v[3].displacement[1],
+                     new_meshes[i].v[2].displacement[1]-new_meshes[i].v[3].displacement[1],
+                     new_meshes[i].v[0].displacement[2]-new_meshes[i].v[3].displacement[2],
+                     new_meshes[i].v[1].displacement[2]-new_meshes[i].v[3].displacement[2],
+                     new_meshes[i].v[2].displacement[2]-new_meshes[i].v[3].displacement[2];
+
+        Matrix3f deform_grad = D_s * B[i];
+        Matrix3f delta_deform_grad = D_s_delta * B[i];
+        Matrix3f delta_p = VK_material(deform_grad, delta_deform_grad);
+        Matrix3f delta_h = -W[i] * delta_p * B[i].transpose();
+        new_meshes[i].v[0].force += delta_h.col(0);
+        new_meshes[i].v[1].force += delta_h.col(1);
+        new_meshes[i].v[2].force += delta_h.col(2);
+        new_meshes[i].v[3].force += (-delta_h.col(0) - delta_h.col(1) - delta_h.col(2));
     }
 }
 
@@ -89,7 +120,6 @@ int main(){
 
     // insert all 5*8 volume tetrahedral meshes.
     sort(particle_list.begin(), particle_list.end(), compareVertex);
-
     int offset = 0;
     for (int i=0; i<2; i++){
         for (int j=0; j<2; j++){
@@ -112,18 +142,27 @@ int main(){
         offset = 1;
     }
 
-    sort(particle_list.begin(), particle_list.end(), compareIdx);
+
+    // deformed shape(Ds) = deformation gardient(F) * reference shape(Dm)
     std::vector<float> undeformed_vol;
+    std::vector<Matrix3f> B_m;
+    precomputation(tetrahedral_list, B_m, undeformed_vol);
+
+    float delta_time = 0.01;
+
+
 
 //---------------------------- TESTING ----------------------------
-    // Test mesh loading
-    for (int i=0; i<4; i++){
-        std::cout<< tetrahedral_list[20].v[i].x() << ", "
-                 << tetrahedral_list[20].v[i].y() << ", "
-                 << tetrahedral_list[20].v[i].z() << ", " <<std::endl;
-    }
+    // // Test mesh loading
+    // for (int i=0; i<4; i++){
+    //     std::cout<< tetrahedral_list[20].v[i].x() << ", "
+    //              << tetrahedral_list[20].v[i].y() << ", "
+    //              << tetrahedral_list[20].v[i].z() << ", " <<std::endl;
+    // }
 
     // Test output for Houdini
+    // sort to reproduce .OBJ files. 
+    sort(particle_list.begin(), particle_list.end(), compareIdx);
     for (int i=0; i<20; i++){
         for (auto& item : particle_list){
             item.position[1] -= 0.1;

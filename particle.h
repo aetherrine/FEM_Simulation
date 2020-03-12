@@ -15,6 +15,7 @@ public:
     Particle(){
         position = last_position = force = velocity = acceleration = Vector3f(0,0,0);
     };
+
     Particle(Vector3f pos, int idx){
         position = last_position = pos;
         index = idx;
@@ -24,4 +25,8 @@ public:
     float x() const { return position[0]; }
     float y() const { return position[1]; }
     float z() const { return position[2]; }
+
+    Vector3f displacement(){
+        return position - last_position;
+    }
 };
