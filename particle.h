@@ -1,4 +1,4 @@
-#include "eigen3/Eigen/Eigen"
+#include "library/eigen/Eigen/Eigen"
 using namespace Eigen;
 
 class Particle{
@@ -15,7 +15,6 @@ public:
     Particle(){
         position = last_position = force = velocity = acceleration = Vector3f(0,0,0);
     };
-
     Particle(Vector3f pos, int idx){
         position = last_position = pos;
         index = idx;

@@ -54,6 +54,10 @@ bool compareVertex(Particle p1, Particle p2) {
     return p1.z() < p2.z();
 }
 
+bool compareIdx(Particle p1, Particle p2) {
+    return p1.index < p2.index;
+}
+
 int main(){
     std::string OBJ_PATH = "../models/yet_another_cube.obj";
     std::vector<Tetrahedral> tetrahedral_list;
@@ -77,13 +81,13 @@ int main(){
                 continue;
 
             Vector3f vertex(std::stof(result[1]), std::stof(result[2]), std::stof(result[3]));
-            Particle p(vertex, i);
+            Particle p(vertex, i++);
             particle_list.push_back(p);
         }
         file.close();
     }
 
-    // TODO: insert all 5*8 volume tetrahedral meshes.
+    // insert all 5*8 volume tetrahedral meshes.
     sort(particle_list.begin(), particle_list.end(), compareVertex);
 
     int offset = 0;
@@ -108,13 +112,16 @@ int main(){
         offset = 1;
     }
 
+    sort(particle_list.begin(), particle_list.end(), compareIdx);
+    std::vector<float> undeformed_vol;
+
+//---------------------------- TESTING ----------------------------
     // Test mesh loading
     for (int i=0; i<4; i++){
         std::cout<< tetrahedral_list[20].v[i].x() << ", "
                  << tetrahedral_list[20].v[i].y() << ", "
                  << tetrahedral_list[20].v[i].z() << ", " <<std::endl;
     }
-
 
     // Test output for Houdini
     for (int i=0; i<20; i++){
@@ -123,7 +130,7 @@ int main(){
         }
         outputOBJ(particle_list, OBJ_PATH, i);
     }
-
+//---------------------------- TESTING ----------------------------
 
 
     // hardcoded volume tetrahedral mesh
