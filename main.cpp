@@ -28,14 +28,14 @@ void outputOBJ(std::vector<Particle> particle_list, std::string original_file, i
     }
 }
 
-void precomputation(std::vector<Tetrahedral> meshes, std::vector<Matrix3f>& B, std::vector<float>& W){
+void precomputation(std::vector<Tetrahedral> &meshes, std::vector<Matrix3f>& B, std::vector<float>& W){
     for (int i=0; i<meshes.size(); i++){
         Matrix3f D_m;
         D_m << meshes[i].v[0].x()-meshes[i].v[3].x(), meshes[i].v[1].x()-meshes[i].v[3].x(), meshes[i].v[2].x()-meshes[i].v[3].x(),
                meshes[i].v[0].y()-meshes[i].v[3].y(), meshes[i].v[1].y()-meshes[i].v[3].y(), meshes[i].v[2].y()-meshes[i].v[3].y(),
                meshes[i].v[0].z()-meshes[i].v[3].z(), meshes[i].v[1].z()-meshes[i].v[3].z(), meshes[i].v[2].z()-meshes[i].v[3].z();
-        B[i] = D_m.inverse();
-        W[i] = 1/6 * D_m.determinant();
+        B.push_back(D_m.inverse());
+        W.push_back(1/6 * D_m.determinant());
     }
 }
 
@@ -48,7 +48,7 @@ Matrix3f VK_material(Matrix3f deform_grad, Matrix3f delta_deform_grad){
     return delta_p;
 }
 
-void ComputeForceDifferentials(std::vector<Tetrahedral> new_meshes, std::vector<Matrix3f>& B, std::vector<float>& W){
+void ComputeForceDifferentials(std::vector<Tetrahedral>& new_meshes, std::vector<Matrix3f>& B, std::vector<float>& W){
     for (int i=0; i<new_meshes.size(); i++){
         Matrix3f D_s;
         D_s << new_meshes[i].v[0].x()-new_meshes[i].v[3].x(), new_meshes[i].v[1].x()-new_meshes[i].v[3].x(), new_meshes[i].v[2].x()-new_meshes[i].v[3].x(),
@@ -56,15 +56,15 @@ void ComputeForceDifferentials(std::vector<Tetrahedral> new_meshes, std::vector<
                new_meshes[i].v[0].z()-new_meshes[i].v[3].z(), new_meshes[i].v[1].z()-new_meshes[i].v[3].z(), new_meshes[i].v[2].z()-new_meshes[i].v[3].z();
         
         Matrix3f D_s_delta;
-        D_s_delta << new_meshes[i].v[0].displacement[0]-new_meshes[i].v[3].displacement[0],
-                     new_meshes[i].v[1].displacement[0]-new_meshes[i].v[3].displacement[0],
-                     new_meshes[i].v[2].displacement[0]-new_meshes[i].v[3].displacement[0],
-                     new_meshes[i].v[0].displacement[1]-new_meshes[i].v[3].displacement[1],
-                     new_meshes[i].v[1].displacement[1]-new_meshes[i].v[3].displacement[1],
-                     new_meshes[i].v[2].displacement[1]-new_meshes[i].v[3].displacement[1],
-                     new_meshes[i].v[0].displacement[2]-new_meshes[i].v[3].displacement[2],
-                     new_meshes[i].v[1].displacement[2]-new_meshes[i].v[3].displacement[2],
-                     new_meshes[i].v[2].displacement[2]-new_meshes[i].v[3].displacement[2];
+        D_s_delta << new_meshes[i].v[0].displacement()[0]-new_meshes[i].v[3].displacement()[0],
+                     new_meshes[i].v[1].displacement()[0]-new_meshes[i].v[3].displacement()[0],
+                     new_meshes[i].v[2].displacement()[0]-new_meshes[i].v[3].displacement()[0],
+                     new_meshes[i].v[0].displacement()[1]-new_meshes[i].v[3].displacement()[1],
+                     new_meshes[i].v[1].displacement()[1]-new_meshes[i].v[3].displacement()[1],
+                     new_meshes[i].v[2].displacement()[1]-new_meshes[i].v[3].displacement()[1],
+                     new_meshes[i].v[0].displacement()[2]-new_meshes[i].v[3].displacement()[2],
+                     new_meshes[i].v[1].displacement()[2]-new_meshes[i].v[3].displacement()[2],
+                     new_meshes[i].v[2].displacement()[2]-new_meshes[i].v[3].displacement()[2];
 
         Matrix3f deform_grad = D_s * B[i];
         Matrix3f delta_deform_grad = D_s_delta * B[i];
@@ -153,7 +153,7 @@ int main(){
 
 
 //---------------------------- TESTING ----------------------------
-    // // Test mesh loading
+    // Test mesh loading
     // for (int i=0; i<4; i++){
     //     std::cout<< tetrahedral_list[20].v[i].x() << ", "
     //              << tetrahedral_list[20].v[i].y() << ", "
@@ -162,15 +162,34 @@ int main(){
 
     // Test output for Houdini
     // sort to reproduce .OBJ files. 
-    sort(particle_list.begin(), particle_list.end(), compareIdx);
-    for (int i=0; i<20; i++){
-        for (auto& item : particle_list){
-            item.position[1] -= 0.1;
-        }
-        outputOBJ(particle_list, OBJ_PATH, i);
-    }
+    // sort(particle_list.begin(), particle_list.end(), compareIdx);
+    // for (int i=0; i<20; i++){
+    //     for (auto& item : particle_list){
+    //         item.position[1] -= 0.1;
+    //     }
+    //     outputOBJ(particle_list, OBJ_PATH, i);
+    // }
 //---------------------------- TESTING ----------------------------
 
+
+
+//---------------------------- TESTING FEM functions ----------------------------
+
+    // middle up puuuuuuuuuuull
+    sort(particle_list.begin(), particle_list.end(), compareIdx);
+    particle_list[21].position[1] += 1;
+    outputOBJ(particle_list, OBJ_PATH, 0);
+
+    ComputeForceDifferentials(tetrahedral_list, B_m, undeformed_vol);
+    // std::cout<<particle_list[21].force<< std::endl;    
+
+    
+        // for (auto& item : particle_list){
+        //     std::cout<< item.force;    
+        //     // item.position[1] -= 0.1;
+        // }
+        // outputOBJ(particle_list, OBJ_PATH, i);
+//---------------------------- TESTING END ----------------------------
 
     // hardcoded volume tetrahedral mesh
     // Vector3f origin(0,0,0);

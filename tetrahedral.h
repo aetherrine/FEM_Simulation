@@ -1,7 +1,7 @@
 // #ifndef PARTICLE_H
 // #define PARTICLE_H
 
-#include "library/eigen/Eigen/Eigen"
+#include "libaray/eigen/Eigen/Eigen"
 #include "particle.h"
 using namespace Eigen;
 
