@@ -9,6 +9,7 @@ public:
     Vector3f force;
     Vector3f velocity;
     Vector3f acceleration;
+    float mass = 1;
 
     int index;
 
