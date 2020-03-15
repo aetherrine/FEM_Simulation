@@ -201,6 +201,13 @@ int main(){
     for (int i=0; i<100; i++){
         for (int j=0; j<10; j++){
             resetForce(particle_list);
+                // constant force on top surface
+                for (int t=18; t<24; t++){
+                    particle_list[t]->force[1] -= 1;
+                }
+                particle_list[24]->force[1] -= 1;
+                particle_list[25]->force[1] -= 1;
+                particle_list[26]->force[1] -= 1;
             // exertForce(particle_list);
             ComputeElasticForces(tetrahedral_list, B_m, undeformed_vol);
             forwardEuler(particle_list, delta_t);
