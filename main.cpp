@@ -34,24 +34,25 @@ void precomputation(std::vector<Tetrahedral*> meshes, std::vector<Matrix3f>& B, 
         D_m << meshes[i]->v[0]->x()-meshes[i]->v[3]->x(), meshes[i]->v[1]->x()-meshes[i]->v[3]->x(), meshes[i]->v[2]->x()-meshes[i]->v[3]->x(),
                meshes[i]->v[0]->y()-meshes[i]->v[3]->y(), meshes[i]->v[1]->y()-meshes[i]->v[3]->y(), meshes[i]->v[2]->y()-meshes[i]->v[3]->y(),
                meshes[i]->v[0]->z()-meshes[i]->v[3]->z(), meshes[i]->v[1]->z()-meshes[i]->v[3]->z(), meshes[i]->v[2]->z()-meshes[i]->v[3]->z();
-        B.push_back(D_m.inverse());
-        W.push_back(1/6 * D_m.determinant());
+
+        B.push_back(1.0/6.0 * D_m.inverse());
+        W.push_back(1.0/6.0 * D_m.determinant());
     }
 }
 
 Matrix3f VK_material(Matrix3f deform_grad){
     Matrix3f I = Matrix3f::Identity(3,3);
-    Matrix3f energy = 1/2 * (deform_grad.transpose()*deform_grad - I);
-    Matrix3f p = deform_grad * (2*0.1785*energy + 0.7141*energy.trace()*I);
+    Matrix3f energy = 0.5 * (deform_grad.transpose()*deform_grad - I);
+    Matrix3f p = deform_grad * (2.0*0.1785*energy + 0.7141*energy.trace()*I);
     return p;
 }
 
 Matrix3f VK_material_differential(Matrix3f deform_grad, Matrix3f delta_deform_grad){
     Matrix3f I = Matrix3f::Identity(3,3);
 
-    Matrix3f energy = 1/2 * (deform_grad.transpose()*deform_grad - I);
-    Matrix3f delta_energy = 1/2 * (delta_deform_grad.transpose()*deform_grad + deform_grad.transpose()*delta_deform_grad);
-    Matrix3f delta_p = delta_deform_grad*(2*0.1785*energy+0.7141*energy.trace()*I) + deform_grad*(2*0.1785*delta_energy+0.7141*delta_energy.trace()*I);
+    Matrix3f energy = 0.5 * (deform_grad.transpose()*deform_grad - I);
+    Matrix3f delta_energy = 0.5 * (delta_deform_grad.transpose()*deform_grad + deform_grad.transpose()*delta_deform_grad);
+    Matrix3f delta_p = delta_deform_grad*(2.0*0.1785*energy+0.7141*energy.trace()*I) + deform_grad*(2.0*0.1785*delta_energy+0.7141*delta_energy.trace()*I);
     return delta_p;
 }
 
@@ -193,22 +194,24 @@ int main(){
 
 
     // Euler integration
-    std::vector<float> undeformed_vol; // deformed shape(Ds) = deformation gardient(F) * reference shape(Dm)
+    // deformed shape(Ds) = deformation gardient(F) * reference shape(Dm)
+    std::vector<float> undeformed_vol;
     std::vector<Matrix3f> B_m;
     precomputation(tetrahedral_list, B_m, undeformed_vol);
+
 
     float delta_t = 0.1;
     for (int i=0; i<100; i++){
         for (int j=0; j<10; j++){
             resetForce(particle_list);
-                // constant force on top surface
-                for (int t=18; t<24; t++){
-                    particle_list[t]->force[1] -= 1;
-                }
-                particle_list[24]->force[1] -= 1;
-                particle_list[25]->force[1] -= 1;
-                particle_list[26]->force[1] -= 1;
             // exertForce(particle_list);
+            for (int t=18; t<24; t++){
+                particle_list[t]->force[1] -= 1;
+            }
+            particle_list[24]->force[1] -= 1;
+            particle_list[25]->force[1] -= 1;
+            particle_list[26]->force[1] -= 1;
+                
             ComputeElasticForces(tetrahedral_list, B_m, undeformed_vol);
             forwardEuler(particle_list, delta_t);
         }
