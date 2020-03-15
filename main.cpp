@@ -102,26 +102,22 @@ void ComputeForceDifferentials(std::vector<Tetrahedral*> new_meshes, std::vector
     }
 }
 
-void resetForce(std::vector<Tetrahedral*> meshes){
-    for (auto& tetMesh:meshes){
-        for (int i=0; i<4; i++)
-            tetMesh->v[i]->force = Vector3f(0,0,0);
+void resetForce(std::vector<Particle*> particles){
+    for (auto p:particles)
+        p->force = Vector3f(0,0,0);
+}
+
+void exertForce(std::vector<Particle*> particles){
+    Vector3f gravity(0, -9.8, 0);
+    for (auto p:particles){
+        p->force += gravity * p->mass;
     }
 }
 
-void exertForce(std::vector<Tetrahedral*> meshes){
-    for (auto& tetMesh:meshes){
-        for (int i=0; i<4; i++)
-            tetMesh->v[i]->force[1] += -9.8 * tetMesh->v[i]->mass;
-    }
-}
-
-void forwardEuler(std::vector<Tetrahedral*> meshes, float dt){
-    for (auto& tetMesh:meshes){
-        for (int i=0; i<4; i++){
-            tetMesh->v[i]->velocity += tetMesh->v[i]->force / tetMesh->v[i]->mass * dt;
-            tetMesh->v[i]->position += tetMesh->v[i]->velocity * dt;
-        }
+void forwardEuler(std::vector<Particle*> particles, float dt){
+    for (auto p:particles){
+        p->velocity += p->force / p->mass * dt;
+        p->position += p->velocity * dt;
     }
 }
 
@@ -195,19 +191,19 @@ int main(){
     }
     sort(particle_list.begin(), particle_list.end(), compareIdx);
 
-    // deformed shape(Ds) = deformation gardient(F) * reference shape(Dm)
-    std::vector<float> undeformed_vol;
+
+    // Euler integration
+    std::vector<float> undeformed_vol; // deformed shape(Ds) = deformation gardient(F) * reference shape(Dm)
     std::vector<Matrix3f> B_m;
     precomputation(tetrahedral_list, B_m, undeformed_vol);
 
-    float delta_t = 0.01;
+    float delta_t = 0.1;
     for (int i=0; i<100; i++){
-        for (int j=0; j<4; j++){
-            resetForce(tetrahedral_list);
-            // exertForce(tetrahedral_list);
-            particle_list[21]->position[1] += 1;
+        for (int j=0; j<10; j++){
+            resetForce(particle_list);
+            // exertForce(particle_list);
             ComputeElasticForces(tetrahedral_list, B_m, undeformed_vol);
-            forwardEuler(tetrahedral_list, delta_t);
+            forwardEuler(particle_list, delta_t);
         }
         outputOBJ(particle_list, OBJ_PATH, i);
     }
