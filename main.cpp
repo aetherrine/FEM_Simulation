@@ -39,13 +39,38 @@ void precomputation(std::vector<Tetrahedral*> meshes, std::vector<Matrix3f>& B, 
     }
 }
 
-Matrix3f VK_material(Matrix3f deform_grad, Matrix3f delta_deform_grad){
+Matrix3f VK_material(Matrix3f deform_grad){
+    Matrix3f I = Matrix3f::Identity(3,3);
+    Matrix3f energy = 1/2 * (deform_grad.transpose()*deform_grad - I);
+    Matrix3f p = deform_grad * (2*0.1785*energy + 0.7141*energy.trace()*I);
+    return p;
+}
+
+Matrix3f VK_material_differential(Matrix3f deform_grad, Matrix3f delta_deform_grad){
     Matrix3f I = Matrix3f::Identity(3,3);
 
     Matrix3f energy = 1/2 * (deform_grad.transpose()*deform_grad - I);
     Matrix3f delta_energy = 1/2 * (delta_deform_grad.transpose()*deform_grad + deform_grad.transpose()*delta_deform_grad);
     Matrix3f delta_p = delta_deform_grad*(2*0.1785*energy+0.7141*energy.trace()*I) + deform_grad*(2*0.1785*delta_energy+0.7141*delta_energy.trace()*I);
     return delta_p;
+}
+
+void ComputeElasticForces(std::vector<Tetrahedral*> new_meshes, std::vector<Matrix3f>& B, std::vector<float>& W){
+    for (int i=0; i<new_meshes.size(); i++){
+        Matrix3f D_s;
+        D_s << new_meshes[i]->v[0]->x()-new_meshes[i]->v[3]->x(), new_meshes[i]->v[1]->x()-new_meshes[i]->v[3]->x(), new_meshes[i]->v[2]->x()-new_meshes[i]->v[3]->x(),
+               new_meshes[i]->v[0]->y()-new_meshes[i]->v[3]->y(), new_meshes[i]->v[1]->y()-new_meshes[i]->v[3]->y(), new_meshes[i]->v[2]->y()-new_meshes[i]->v[3]->y(),
+               new_meshes[i]->v[0]->z()-new_meshes[i]->v[3]->z(), new_meshes[i]->v[1]->z()-new_meshes[i]->v[3]->z(), new_meshes[i]->v[2]->z()-new_meshes[i]->v[3]->z();
+
+        Matrix3f deform_grad = D_s * B[i];
+        Matrix3f P = VK_material(deform_grad);
+        Matrix3f H = -W[i] * P * B[i].transpose();
+
+        new_meshes[i]->v[0]->force += H.col(0);
+        new_meshes[i]->v[1]->force += H.col(1);
+        new_meshes[i]->v[2]->force += H.col(2);
+        new_meshes[i]->v[3]->force += (-H.col(0) - H.col(1) - H.col(2));
+    }
 }
 
 void ComputeForceDifferentials(std::vector<Tetrahedral*> new_meshes, std::vector<Matrix3f>& B, std::vector<float>& W){
@@ -68,7 +93,7 @@ void ComputeForceDifferentials(std::vector<Tetrahedral*> new_meshes, std::vector
 
         Matrix3f deform_grad = D_s * B[i];
         Matrix3f delta_deform_grad = D_s_delta * B[i];
-        Matrix3f delta_p = VK_material(deform_grad, delta_deform_grad);
+        Matrix3f delta_p = VK_material_differential(deform_grad, delta_deform_grad);
         Matrix3f delta_h = -W[i] * delta_p * B[i].transpose();
         new_meshes[i]->v[0]->force += delta_h.col(0);
         new_meshes[i]->v[1]->force += delta_h.col(1);
@@ -99,6 +124,10 @@ void forwardEuler(std::vector<Tetrahedral*> meshes, float dt){
         }
     }
 }
+
+// void backwardEuler(std::vector<Tetrahedral*> meshes, float dt){
+
+// }
 
 bool compareVertex(Particle* p1, Particle* p2) {
     if (p1->x() != p2->x())
@@ -177,11 +206,14 @@ int main(){
             resetForce(tetrahedral_list);
             // exertForce(tetrahedral_list);
             particle_list[21]->position[1] += 1;
-            ComputeForceDifferentials(tetrahedral_list, B_m, undeformed_vol);
+            ComputeElasticForces(tetrahedral_list, B_m, undeformed_vol);
             forwardEuler(tetrahedral_list, delta_t);
         }
         outputOBJ(particle_list, OBJ_PATH, i);
     }
+
+
+
 
 
 //---------------------------- TESTING ----------------------------
