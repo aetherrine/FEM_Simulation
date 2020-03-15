@@ -115,10 +115,19 @@ void exertForce(std::vector<Particle*> particles){
     }
 }
 
-void forwardEuler(std::vector<Particle*> particles, float dt){
+void collision(std::vector<Particle*> particles, float dt){
     for (auto p:particles){
-        p->velocity += p->force / p->mass * dt;
+        if (p->position[1] <= 0){
+            p->velocity = -p->velocity;
+        }
+    }
+}
+
+void forwardEuler(std::vector<Particle*> particles, float dt){
+    collision(particles, dt);
+    for (auto p:particles){
         p->position += p->velocity * dt;
+        p->velocity += p->force / p->mass * dt;
     }
 }
 
@@ -160,7 +169,7 @@ int main(){
             if (result[0] != "v")
                 continue;
 
-            Vector3f vertex(std::stof(result[1]), std::stof(result[2]), std::stof(result[3]));
+            Vector3f vertex(std::stof(result[1]), std::stof(result[2])+5.0, std::stof(result[3]));
             Particle* p = new Particle(vertex, i++);
             particle_list.push_back(p);
         }
@@ -199,19 +208,20 @@ int main(){
     std::vector<Matrix3f> B_m;
     precomputation(tetrahedral_list, B_m, undeformed_vol);
 
+    // for (int t=18; t<24; t++){
+    //     particle_list[t]->force[1] -= 1;
+    // }
+    // particle_list[24]->force[1] -= 1;
+    // particle_list[25]->force[1] -= 1;
+    // particle_list[26]->force[1] -= 1;
+    // for (auto vertex:particle_list)
+    //     vertex->position += Vector3f(0,-1,0);
 
-    float delta_t = 0.1;
+    float delta_t = 0.01;
     for (int i=0; i<100; i++){
-        for (int j=0; j<10; j++){
+        for (int j=0; j<100; j++){
             resetForce(particle_list);
-            // exertForce(particle_list);
-            for (int t=18; t<24; t++){
-                particle_list[t]->force[1] -= 1;
-            }
-            particle_list[24]->force[1] -= 1;
-            particle_list[25]->force[1] -= 1;
-            particle_list[26]->force[1] -= 1;
-                
+            exertForce(particle_list);
             ComputeElasticForces(tetrahedral_list, B_m, undeformed_vol);
             forwardEuler(particle_list, delta_t);
         }
