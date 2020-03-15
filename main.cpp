@@ -109,7 +109,7 @@ void resetForce(std::vector<Particle*> particles){
 }
 
 void exertForce(std::vector<Particle*> particles){
-    Vector3f gravity(0, -9.8, 0);
+    Vector3f gravity(0, -0.98, 0);
     for (auto p:particles){
         p->force += gravity * p->mass;
     }
@@ -126,14 +126,14 @@ void collision(std::vector<Particle*> particles, float dt){
 void forwardEuler(std::vector<Particle*> particles, float dt){
     collision(particles, dt);
     for (auto p:particles){
-        p->position += p->velocity * dt;
         p->velocity += p->force / p->mass * dt;
+        p->position += p->velocity * dt;
     }
 }
 
-// void backwardEuler(std::vector<Tetrahedral*> meshes, float dt){
-
-// }
+void backwardEuler(std::vector<Particle*> particles, float dt){
+    collision(particles, dt);
+}
 
 bool compareVertex(Particle* p1, Particle* p2) {
     if (p1->x() != p2->x())
@@ -169,7 +169,7 @@ int main(){
             if (result[0] != "v")
                 continue;
 
-            Vector3f vertex(std::stof(result[1]), std::stof(result[2])+5.0, std::stof(result[3]));
+            Vector3f vertex(std::stof(result[1]), std::stof(result[2])+20.0, std::stof(result[3]));
             Particle* p = new Particle(vertex, i++);
             particle_list.push_back(p);
         }
@@ -219,11 +219,12 @@ int main(){
 
     float delta_t = 0.01;
     for (int i=0; i<100; i++){
-        for (int j=0; j<100; j++){
+        for (int j=0; j<10; j++){
             resetForce(particle_list);
             exertForce(particle_list);
             ComputeElasticForces(tetrahedral_list, B_m, undeformed_vol);
             forwardEuler(particle_list, delta_t);
+            // backwardEuler(particle_list, delta_t);
         }
         outputOBJ(particle_list, OBJ_PATH, i);
     }
