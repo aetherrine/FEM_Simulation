@@ -148,7 +148,7 @@ bool compareIdx(Particle* p1, Particle* p2) {
 }
 
 int main(){
-    std::string OBJ_PATH = "../models/yet_another_cube.obj";
+    std::string OBJ_PATH = "../models/444.obj";
     std::vector<Tetrahedral*> tetrahedral_list;
     std::vector<Particle*> particle_list;
 
@@ -169,7 +169,7 @@ int main(){
             if (result[0] != "v")
                 continue;
 
-            Vector3f vertex(std::stof(result[1]), std::stof(result[2])+20.0, std::stof(result[3]));
+            Vector3f vertex(std::stof(result[1]), std::stof(result[2])+5.0, std::stof(result[3]));
             Particle* p = new Particle(vertex, i++);
             particle_list.push_back(p);
         }
@@ -178,29 +178,32 @@ int main(){
 
     // insert all 5*8 volume tetrahedral meshes.
     sort(particle_list.begin(), particle_list.end(), compareVertex);
-    int offset = 0;
-    for (int i=0; i<2; i++){
-        for (int j=0; j<2; j++){
-            for (int k=0; k<2; k++){
-                Tetrahedral* tetMesh1 = new Tetrahedral(particle_list[0+offset],particle_list[3+offset],particle_list[4+offset],particle_list[12+offset]);
-                Tetrahedral* tetMesh2 = new Tetrahedral(particle_list[0+offset],particle_list[9+offset],particle_list[10+offset],particle_list[12+offset]);
-                Tetrahedral* tetMesh3 = new Tetrahedral(particle_list[0+offset],particle_list[12+offset],particle_list[13+offset],particle_list[4+offset]);
-                Tetrahedral* tetMesh4 = new Tetrahedral(particle_list[0+offset],particle_list[1+offset],particle_list[4+offset],particle_list[10+offset]);
-                Tetrahedral* tetMesh5 = new Tetrahedral(particle_list[0+offset],particle_list[4+offset],particle_list[10+offset],particle_list[12+offset]);
+    int offset_x = 0;
+    int offset_y = 0;
+    int offset_z = 0;
+    for (int i=0; i<4; i++){
+        for (int j=0; j<4; j++){
+            for (int k=0; k<4; k++){
+                Tetrahedral* tetMesh1 = new Tetrahedral(particle_list[0+offset_x+offset_y+offset_z],particle_list[5+offset_x+offset_y+offset_z],particle_list[6+offset_x+offset_y+offset_z],particle_list[30+offset_x+offset_y+offset_z]);
+                Tetrahedral* tetMesh2 = new Tetrahedral(particle_list[0+offset_x+offset_y+offset_z],particle_list[25+offset_x+offset_y+offset_z],particle_list[26+offset_x+offset_y+offset_z],particle_list[30+offset_x+offset_y+offset_z]);
+                Tetrahedral* tetMesh3 = new Tetrahedral(particle_list[6+offset_x+offset_y+offset_z],particle_list[31+offset_x+offset_y+offset_z],particle_list[26+offset_x+offset_y+offset_z],particle_list[30+offset_x+offset_y+offset_z]);
+                Tetrahedral* tetMesh4 = new Tetrahedral(particle_list[0+offset_x+offset_y+offset_z],particle_list[1+offset_x+offset_y+offset_z],particle_list[26+offset_x+offset_y+offset_z],particle_list[6+offset_x+offset_y+offset_z]);
+                Tetrahedral* tetMesh5 = new Tetrahedral(particle_list[0+offset_x+offset_y+offset_z],particle_list[26+offset_x+offset_y+offset_z],particle_list[6+offset_x+offset_y+offset_z],particle_list[30+offset_x+offset_y+offset_z]);
 
                 tetrahedral_list.push_back(tetMesh1);
                 tetrahedral_list.push_back(tetMesh2);
                 tetrahedral_list.push_back(tetMesh3);
                 tetrahedral_list.push_back(tetMesh4);
                 tetrahedral_list.push_back(tetMesh5);
-                offset = 9;
+                offset_x += 25;
             }
-            offset = 3;
+            offset_x = 0;
+            offset_z += 5;
         }
-        offset = 1;
+        offset_x = offset_z = 0;
+        offset_y += 1;
     }
     sort(particle_list.begin(), particle_list.end(), compareIdx);
-
 
     // Euler integration
     // deformed shape(Ds) = deformation gardient(F) * reference shape(Dm)
