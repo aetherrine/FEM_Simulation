@@ -43,8 +43,8 @@ void precomputation(std::vector<Tetrahedral*> meshes, std::vector<Matrix3f>& B, 
 Matrix3f VK_material(Matrix3f deform_grad){
     Matrix3f I = Matrix3f::Identity(3,3);
     Matrix3f energy = 0.5 * (deform_grad.transpose()*deform_grad - I);
-    Matrix3f p = deform_grad * (2.0*0.1785*energy + 0.7141*energy.trace()*I);
-    return p;
+    Matrix3f P = deform_grad * (2.0*0.1785*energy + 0.7141*energy.trace()*I);
+    return P;
 }
 
 Matrix3f VK_material_differential(Matrix3f deform_grad, Matrix3f delta_deform_grad){
@@ -56,6 +56,22 @@ Matrix3f VK_material_differential(Matrix3f deform_grad, Matrix3f delta_deform_gr
     return delta_p;
 }
 
+Matrix3f PK_stress_tensor_corotated(Matrix3f deform_grad){
+    // JacobiSVD<Matrix3f> svd(deform_grad);
+
+    Matrix3f I = Matrix3f::Identity(3,3);
+    Affine3f t;
+    t = deform_grad;
+    Matrix3f R = t.rotation(); // rotation matrix in polar decomposition
+    Matrix3f P = 2.0*0.1785*(deform_grad-R) + 0.7141*(R.transpose()*deform_grad-I).trace()*R;
+    return P;
+}
+
+Matrix3f Neohookean(Matrix3f deform_grad){
+    Matrix3f P = 0.1785*(deform_grad-0.1785*deform_grad.transpose().inverse()) + 0.7141*log(deform_grad.determinant())*deform_grad.transpose().inverse();
+    return P;
+}
+
 void ComputeElasticForces(std::vector<Tetrahedral*> new_meshes, std::vector<Matrix3f>& B, std::vector<float>& W){
     for (int i=0; i<new_meshes.size(); i++){
         Matrix3f D_s;
@@ -64,7 +80,10 @@ void ComputeElasticForces(std::vector<Tetrahedral*> new_meshes, std::vector<Matr
                new_meshes[i]->v[0]->z()-new_meshes[i]->v[3]->z(), new_meshes[i]->v[1]->z()-new_meshes[i]->v[3]->z(), new_meshes[i]->v[2]->z()-new_meshes[i]->v[3]->z();
 
         Matrix3f deform_grad = D_s * B[i];
+
         Matrix3f P = VK_material(deform_grad);
+        // Matrix3f P = PK_stress_tensor_corotated(deform_grad);
+        // Matrix3f P = Neohookean(deform_grad); 
         Matrix3f H = -W[i] * P * B[i].transpose();
 
         new_meshes[i]->v[0]->force += H.col(0);
@@ -148,7 +167,7 @@ bool compareIdx(Particle* p1, Particle* p2) {
 }
 
 int main(){
-    std::string OBJ_PATH = "../models/444.obj";
+    std::string OBJ_PATH = "../models/new444.obj";
     std::vector<Tetrahedral*> tetrahedral_list;
     std::vector<Particle*> particle_list;
 
@@ -222,7 +241,7 @@ int main(){
 
     float delta_t = 0.01;
     for (int i=0; i<100; i++){
-        for (int j=0; j<10; j++){
+        for (int j=0; j<5; j++){
             resetForce(particle_list);
             exertForce(particle_list);
             ComputeElasticForces(tetrahedral_list, B_m, undeformed_vol);
@@ -253,6 +272,18 @@ int main(){
     //     }
     //     outputOBJ(particle_list, OBJ_PATH, i);
     // }
+
+    // Test polar decomposition
+    // Matrix2f tmp;
+    // tmp << 1.300, -0.375,
+    //        0.750, 0.650;
+    // Affine2f t;
+    // t = tmp;
+    // Matrix2f rot = t.rotation();
+    // std::cout<<tmp<<std::endl;
+    // std::cout<<"R: "<<rot<<std::endl;
+    // std::cout<<"S: "<<rot.inverse()*tmp<<std::endl;
+    // return 0;
 //---------------------------- TESTING ----------------------------
 
 
