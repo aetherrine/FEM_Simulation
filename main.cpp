@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <math.h>
 
 void outputOBJ(std::vector<Particle*> particle_list, std::string original_file, int idx){
     std::ifstream in(original_file);
@@ -68,7 +69,13 @@ Matrix3f PK_stress_tensor_corotated(Matrix3f deform_grad){
 }
 
 Matrix3f Neohookean(Matrix3f deform_grad){
-    Matrix3f P = 0.1785*(deform_grad-deform_grad.transpose().inverse()) + 0.7141*log(deform_grad.determinant())*(deform_grad.transpose().inverse());
+    // J may be undefined sometimes, following the original Neohookean model
+    // Matrix3f P = 0.1785*(deform_grad-deform_grad.transpose().inverse()) + 0.7141*(log(sqrt(deform_grad.determinant()))/log(10))*(deform_grad.transpose().inverse());
+    
+    // Stable Neohookean
+    // Reference: https://graphics.pixar.com/library/StableElasticity/paper.pdf
+    float det = deform_grad.determinant();
+    Matrix3f P = 0.1785*deform_grad + det*(0.7141*(det-1)-0.1785)*(deform_grad.transpose().inverse());
     return P;
 }
 
