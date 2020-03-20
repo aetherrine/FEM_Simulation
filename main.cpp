@@ -63,12 +63,12 @@ Matrix3f PK_stress_tensor_corotated(Matrix3f deform_grad){
     Affine3f t;
     t = deform_grad;
     Matrix3f R = t.rotation(); // rotation matrix in polar decomposition
-    Matrix3f P = 2.0*0.1785*(deform_grad-R) + 0.7141*(R.transpose()*deform_grad-I).trace()*R;
+    Matrix3f P = 2.0*0.1785*(deform_grad-R) + (R.transpose()*deform_grad-I).trace()*R*0.7141;
     return P;
 }
 
 Matrix3f Neohookean(Matrix3f deform_grad){
-    Matrix3f P = 0.1785*(deform_grad-0.1785*deform_grad.transpose().inverse()) + 0.7141*log(deform_grad.determinant())*deform_grad.transpose().inverse();
+    Matrix3f P = 0.1785*(deform_grad-deform_grad.transpose().inverse()) + 0.7141*log(deform_grad.determinant())*(deform_grad.transpose().inverse());
     return P;
 }
 
@@ -81,9 +81,9 @@ void ComputeElasticForces(std::vector<Tetrahedral*> new_meshes, std::vector<Matr
 
         Matrix3f deform_grad = D_s * B[i];
 
-        Matrix3f P = VK_material(deform_grad);
+        // Matrix3f P = VK_material(deform_grad);
         // Matrix3f P = PK_stress_tensor_corotated(deform_grad);
-        // Matrix3f P = Neohookean(deform_grad); 
+        Matrix3f P = Neohookean(deform_grad); 
         Matrix3f H = -W[i] * P * B[i].transpose();
 
         new_meshes[i]->v[0]->force += H.col(0);
