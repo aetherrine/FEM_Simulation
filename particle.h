@@ -1,3 +1,6 @@
+#ifndef PARTICLE_H
+#define PARTICLE_H
+
 #include "library/eigen/Eigen/Eigen"
 using namespace Eigen;
 
@@ -31,3 +34,5 @@ public:
         return position - last_position;
     }
 };
+
+#endif

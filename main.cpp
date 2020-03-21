@@ -1,6 +1,7 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "library/tiny_obj_loader.h"
 #include "tetrahedral.h"
+#include "triangle.h"
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -26,6 +27,93 @@ void outputOBJ(std::vector<Particle*> particle_list, std::string original_file, 
         }
         in.close();
         out.close();
+    }
+}
+
+void outputOBJ_tetGen(std::vector<Particle*> particle_list, std::vector<Triangle*> triangle_list, int idx){
+    std::ofstream out("output/cube_"+std::to_string(idx)+".obj");
+    out << "Simple obj file with vertex and triangle mesh information :} \n";
+    for (int i=0; i<particle_list.size(); i++){
+        out << "v";
+        out << " " << particle_list[i]->x();
+        out << " " << particle_list[i]->y();
+        out << " " << particle_list[i]->z() << "\n";
+    }
+
+    for (int k=0; k<triangle_list.size(); k++){
+        out << "f";
+        out << " " << triangle_list[k]->idx[0];
+        out << " " << triangle_list[k]->idx[1];
+        out << " " << triangle_list[k]->idx[2] << "\n";
+    }
+}
+
+void loadTetGen(std::vector<Particle*>& particle_list, std::vector<Triangle*>& triangle_list, std::vector<Tetrahedral*>& tetrahedral_list, std::string node_file, std::string ele_file, std::string face_file){
+    // load vertex coordinate
+    std::ifstream file_a(node_file);
+    if (file_a.is_open()) {
+        std::string line;
+        getline(file_a, line); // skip first line
+        while (getline(file_a, line)) {
+            std::vector<std::string> result;
+            std::istringstream iss(line);
+            for(std::string s; iss >> s; )
+                result.push_back(s);
+
+            if (result.size() == 0)
+                continue;
+            if (result[0] == "#")
+                continue;
+
+            Vector3f vertex(std::stof(result[1]), std::stof(result[2])+3.0, std::stof(result[3]));
+            Particle* p = new Particle(vertex, std::stoi(result[0]));
+            particle_list.push_back(p);
+        }
+        file_a.close();
+    }
+    
+    // load triangle surface mesh
+    std::ifstream file_b(face_file);
+    if (file_b.is_open()) {
+        std::string line;
+        getline(file_b, line);
+        while (getline(file_b, line)) {
+            std::vector<std::string> result;
+            std::istringstream iss(line);
+            for(std::string s; iss >> s; )
+                result.push_back(s);
+
+            if (result.size() == 0)
+                continue;
+            if (result[0] == "#")
+                continue;
+
+            Triangle* tri = new Triangle(result[1], result[2], result[3]);
+            triangle_list.push_back(tri);
+        }
+        file_b.close();
+    }
+
+    // load tetrahedral volume mesh
+    std::ifstream file_c(ele_file);
+    if (file_c.is_open()) {
+        std::string line;
+        getline(file_c, line);
+        while (getline(file_c, line)) {
+            std::vector<std::string> result;
+            std::istringstream iss(line);
+            for(std::string s; iss >> s; )
+                result.push_back(s);
+
+            if (result.size() == 0)
+                continue;
+            if (result[0] == "#")
+                continue;
+
+            Tetrahedral* tet = new Tetrahedral(particle_list[std::stoi(result[1])-1], particle_list[std::stoi(result[2])-1], particle_list[std::stoi(result[3])-1], particle_list[std::stoi(result[4])-1]);
+            tetrahedral_list.push_back(tet);
+        }
+        file_c.close();
     }
 }
 
@@ -88,9 +176,9 @@ void ComputeElasticForces(std::vector<Tetrahedral*> new_meshes, std::vector<Matr
 
         Matrix3f deform_grad = D_s * B[i];
 
-        // Matrix3f P = VK_material(deform_grad);
+        Matrix3f P = VK_material(deform_grad);
         // Matrix3f P = PK_stress_tensor_corotated(deform_grad);
-        Matrix3f P = Neohookean(deform_grad); 
+        // Matrix3f P = Neohookean(deform_grad); 
         Matrix3f H = -W[i] * P * B[i].transpose();
 
         new_meshes[i]->v[0]->force += H.col(0);
@@ -175,61 +263,68 @@ bool compareIdx(Particle* p1, Particle* p2) {
 
 int main(){
     std::string OBJ_PATH = "../models/new444.obj";
+    std::string node_file = "../models/real_cube/cube.node";
+    std::string ele_file = "../models/real_cube/cube.ele";
+    std::string face_file = "../models/real_cube/cube.face";
     std::vector<Tetrahedral*> tetrahedral_list;
     std::vector<Particle*> particle_list;
+    std::vector<Triangle*> triangle_list;
 
-    std::ifstream file(OBJ_PATH);
-    if (file.is_open()) {
-        std::string line;
-        int i = 0;
-        while (getline(file, line)) {
-            std::vector<std::string> result;
-            std::istringstream iss(line);
-            for(std::string s; iss >> s; )
-                result.push_back(s);
+    loadTetGen(particle_list, triangle_list, tetrahedral_list, node_file, ele_file, face_file);
+    
+    // std::cout<<particle_list.size()<<", "<<triangle_list.size()<<", "<<tetrahedral_list.size()<<std::endl;
+    // std::ifstream file(OBJ_PATH);
+    // if (file.is_open()) {
+    //     std::string line;
+    //     int i = 0;
+    //     while (getline(file, line)) {
+    //         std::vector<std::string> result;
+    //         std::istringstream iss(line);
+    //         for(std::string s; iss >> s; )
+    //             result.push_back(s);
 
-            if (result.size() == 0)
-                continue;
-            if (result[0] == "vt")
-                break;
-            if (result[0] != "v")
-                continue;
+    //         if (result.size() == 0)
+    //             continue;
+    //         if (result[0] == "vt")
+    //             break;
+    //         if (result[0] != "v")
+    //             continue;
 
-            Vector3f vertex(std::stof(result[1]), std::stof(result[2])+5.0, std::stof(result[3]));
-            Particle* p = new Particle(vertex, i++);
-            particle_list.push_back(p);
-        }
-        file.close();
-    }
+    //         Vector3f vertex(std::stof(result[1]), std::stof(result[2])+1.0, std::stof(result[3]));
+    //         Particle* p = new Particle(vertex, i++);
+    //         particle_list.push_back(p);
+    //     }
+    //     file.close();
+    // }
 
     // insert all 5*8 volume tetrahedral meshes.
-    sort(particle_list.begin(), particle_list.end(), compareVertex);
-    int offset_x = 0;
-    int offset_y = 0;
-    int offset_z = 0;
-    for (int i=0; i<4; i++){
-        for (int j=0; j<4; j++){
-            for (int k=0; k<4; k++){
-                Tetrahedral* tetMesh1 = new Tetrahedral(particle_list[0+offset_x+offset_y+offset_z],particle_list[5+offset_x+offset_y+offset_z],particle_list[6+offset_x+offset_y+offset_z],particle_list[30+offset_x+offset_y+offset_z]);
-                Tetrahedral* tetMesh2 = new Tetrahedral(particle_list[0+offset_x+offset_y+offset_z],particle_list[25+offset_x+offset_y+offset_z],particle_list[26+offset_x+offset_y+offset_z],particle_list[30+offset_x+offset_y+offset_z]);
-                Tetrahedral* tetMesh3 = new Tetrahedral(particle_list[6+offset_x+offset_y+offset_z],particle_list[31+offset_x+offset_y+offset_z],particle_list[26+offset_x+offset_y+offset_z],particle_list[30+offset_x+offset_y+offset_z]);
-                Tetrahedral* tetMesh4 = new Tetrahedral(particle_list[0+offset_x+offset_y+offset_z],particle_list[1+offset_x+offset_y+offset_z],particle_list[26+offset_x+offset_y+offset_z],particle_list[6+offset_x+offset_y+offset_z]);
-                Tetrahedral* tetMesh5 = new Tetrahedral(particle_list[0+offset_x+offset_y+offset_z],particle_list[26+offset_x+offset_y+offset_z],particle_list[6+offset_x+offset_y+offset_z],particle_list[30+offset_x+offset_y+offset_z]);
+    // sort(particle_list.begin(), particle_list.end(), compareVertex);
+    // int offset_x = 0;
+    // int offset_y = 0;
+    // int offset_z = 0;
+    // for (int i=0; i<4; i++){
+    //     for (int j=0; j<4; j++){
+    //         for (int k=0; k<4; k++){
+    //             Tetrahedral* tetMesh1 = new Tetrahedral(particle_list[0+offset_x+offset_y+offset_z],particle_list[5+offset_x+offset_y+offset_z],particle_list[6+offset_x+offset_y+offset_z],particle_list[30+offset_x+offset_y+offset_z]);
+    //             Tetrahedral* tetMesh2 = new Tetrahedral(particle_list[0+offset_x+offset_y+offset_z],particle_list[25+offset_x+offset_y+offset_z],particle_list[26+offset_x+offset_y+offset_z],particle_list[30+offset_x+offset_y+offset_z]);
+    //             Tetrahedral* tetMesh3 = new Tetrahedral(particle_list[6+offset_x+offset_y+offset_z],particle_list[31+offset_x+offset_y+offset_z],particle_list[26+offset_x+offset_y+offset_z],particle_list[30+offset_x+offset_y+offset_z]);
+    //             Tetrahedral* tetMesh4 = new Tetrahedral(particle_list[0+offset_x+offset_y+offset_z],particle_list[1+offset_x+offset_y+offset_z],particle_list[26+offset_x+offset_y+offset_z],particle_list[6+offset_x+offset_y+offset_z]);
+    //             Tetrahedral* tetMesh5 = new Tetrahedral(particle_list[0+offset_x+offset_y+offset_z],particle_list[26+offset_x+offset_y+offset_z],particle_list[6+offset_x+offset_y+offset_z],particle_list[30+offset_x+offset_y+offset_z]);
 
-                tetrahedral_list.push_back(tetMesh1);
-                tetrahedral_list.push_back(tetMesh2);
-                tetrahedral_list.push_back(tetMesh3);
-                tetrahedral_list.push_back(tetMesh4);
-                tetrahedral_list.push_back(tetMesh5);
-                offset_x += 25;
-            }
-            offset_x = 0;
-            offset_z += 5;
-        }
-        offset_x = offset_z = 0;
-        offset_y += 1;
-    }
-    sort(particle_list.begin(), particle_list.end(), compareIdx);
+    //             tetrahedral_list.push_back(tetMesh1);
+    //             tetrahedral_list.push_back(tetMesh2);
+    //             tetrahedral_list.push_back(tetMesh3);
+    //             tetrahedral_list.push_back(tetMesh4);
+    //             tetrahedral_list.push_back(tetMesh5);
+    //             offset_x += 25;
+    //         }
+    //         offset_x = 0;
+    //         offset_z += 5;
+    //     }
+    //     offset_x = offset_z = 0;
+    //     offset_y += 1;
+    // }
+    // sort(particle_list.begin(), particle_list.end(), compareIdx);
 
     // Euler integration
     // deformed shape(Ds) = deformation gardient(F) * reference shape(Dm)
@@ -255,7 +350,7 @@ int main(){
             forwardEuler(particle_list, delta_t);
             // backwardEuler(particle_list, delta_t);
         }
-        outputOBJ(particle_list, OBJ_PATH, i);
+        outputOBJ_tetGen(particle_list, triangle_list, i);
     }
 
 
