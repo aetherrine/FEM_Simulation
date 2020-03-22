@@ -243,7 +243,7 @@ void exertForce(std::vector<Particle*>& particles){
 }
 
 void collision(Particle* p){
-    if (p->position[1] < 0.f)
+    if (p->position[1] < 0.f && p->velocity[1] < 0.f)
         p->velocity[1] = -0.4*p->velocity[1];
 }
 
@@ -251,6 +251,8 @@ void forwardEuler(std::vector<Particle*>& particles, float dt){
     for (auto& p:particles){
         p->velocity += p->force / p->mass * dt;
         collision(p);
+        if (p->position[0] <= 0.3)
+            p->velocity = Vector3f(0,0,0);
         p->position += p->velocity * dt;
     }
 }
