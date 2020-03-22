@@ -152,10 +152,12 @@ Matrix3f PK_stress_tensor_corotated(Matrix3f deform_grad){
     // JacobiSVD<Matrix3f> svd(deform_grad);
 
     Matrix3f I = Matrix3f::Identity(3,3);
+    float mu = 300000.f / (2.0 * (1.0 + 0.3));
+    float lambda = (300000.f * 0.3) / ((1.0 + 0.3) * (1.0 - 2.0 * 0.3));
     Affine3f t;
     t = deform_grad;
     Matrix3f R = t.rotation(); // rotation matrix in polar decomposition
-    Matrix3f P = 2.0*0.1785*(deform_grad-R) + (R.transpose()*deform_grad-I).trace()*R*0.7141;
+    Matrix3f P = 2.0*mu*(deform_grad-R) + (R.transpose()*deform_grad-I).trace()*R*lambda;
     return P;
 }
 
@@ -165,8 +167,8 @@ Matrix3f Neohookean(Matrix3f deform_grad){
     
     // Stable Neohookean
     // Reference: https://graphics.pixar.com/library/StableElasticity/paper.pdf
-    float mu = 300000.f / (2 * (1 + 0.3));
-    float lambda = (300000.f * 0.3) / ((1 + 0.3) * (1 - 2 * 0.3));
+    float mu = 300000.f / (2.0 * (1.0 + 0.3));
+    float lambda = (300000.f * 0.3) / ((1.0 + 0.3) * (1.0 - 2.0 * 0.3));
     float det = deform_grad.determinant();
     Matrix3f P = mu*deform_grad + det*(lambda*(det-1)-mu)*(deform_grad.transpose().inverse());
     return P;
