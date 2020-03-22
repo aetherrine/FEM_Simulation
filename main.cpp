@@ -152,8 +152,8 @@ Matrix3f PK_stress_tensor_corotated(Matrix3f deform_grad){
     // JacobiSVD<Matrix3f> svd(deform_grad);
 
     Matrix3f I = Matrix3f::Identity(3,3);
-    float mu = 300000.f / (2.0 * (1.0 + 0.3));
-    float lambda = (300000.f * 0.3) / ((1.0 + 0.3) * (1.0 - 2.0 * 0.3));
+    float mu = 500000.f / (2.0 * (1.0 + 0.3));
+    float lambda = (500000.f * 0.3) / ((1.0 + 0.3) * (1.0 - 2.0 * 0.3));
     Affine3f t;
     t = deform_grad;
     Matrix3f R = t.rotation(); // rotation matrix in polar decomposition
@@ -167,8 +167,8 @@ Matrix3f Neohookean(Matrix3f deform_grad){
     
     // Stable Neohookean
     // Reference: https://graphics.pixar.com/library/StableElasticity/paper.pdf
-    float mu = 300000.f / (2.0 * (1.0 + 0.3));
-    float lambda = (300000.f * 0.3) / ((1.0 + 0.3) * (1.0 - 2.0 * 0.3));
+    float mu = 500000.f / (2.0 * (1.0 + 0.3));
+    float lambda = (500000.f * 0.3) / ((1.0 + 0.3) * (1.0 - 2.0 * 0.3));
     float det = deform_grad.determinant();
     Matrix3f P = mu*deform_grad + det*(lambda*(det-1)-mu)*(deform_grad.transpose().inverse());
     return P;
@@ -189,9 +189,9 @@ void ComputeElasticForces(std::vector<Tetrahedral*>& new_meshes, std::vector<Mat
             }
         }
 
-        Matrix3f P = VK_material(deform_grad);
+        // Matrix3f P = VK_material(deform_grad);
         // Matrix3f P = PK_stress_tensor_corotated(deform_grad);
-        // Matrix3f P = Neohookean(deform_grad); 
+        Matrix3f P = Neohookean(deform_grad); 
         Matrix3f H = -W[i] * P * B[i].transpose();
 
         new_meshes[i]->v[0]->force += H.col(0);
@@ -236,7 +236,7 @@ void resetForce(std::vector<Particle*>& particles){
 }
 
 void exertForce(std::vector<Particle*>& particles){
-    Vector3f gravity(0.f, -9.8, 0.f);
+    Vector3f gravity(0.f, -0.98, 0.f);
     for (auto& p:particles){
         p->force += gravity * p->mass;
     }
@@ -244,7 +244,7 @@ void exertForce(std::vector<Particle*>& particles){
 
 void collision(Particle* p){
     if (p->position[1] < 0.f)
-        p->velocity = Vector3f(0.f,0.f,0.f);
+        p->velocity[1] = -0.4*p->velocity[1];
 }
 
 void forwardEuler(std::vector<Particle*>& particles, float dt){
@@ -348,7 +348,7 @@ int main(){
 
     float delta_t = 1e-4;
     for (int i=0; i<60; i++){
-        for (float time_step=0; time_step<1.f/24.f; time_step+=delta_t){
+        for (float time_step=0; time_step<1.f/30.f; time_step+=delta_t){
             resetForce(particle_list);
             exertForce(particle_list);
             ComputeElasticForces(tetrahedral_list, B_m, undeformed_vol);
