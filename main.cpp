@@ -131,8 +131,8 @@ void precomputation(std::vector<Tetrahedral*>& meshes, std::vector<Matrix3f>& B,
 
 Matrix3f VK_material(Matrix3f deform_grad){
     Matrix3f I = Matrix3f::Identity(3,3);
-    float mu = 300000.f / (2.0 * (1.0 + 0.3));
-    float lambda = (300000.f * 0.3) / ((1.0 + 0.3) * (1.0 - 2.0 * 0.3));
+    float mu = 500000.f / (2.0 * (1.0 + 0.3));
+    float lambda = (500000.f * 0.3) / ((1.0 + 0.3) * (1.0 - 2.0 * 0.3));
 
     Matrix3f energy = 0.5 * (deform_grad.transpose()*deform_grad - I);
     Matrix3f P = deform_grad * (2.0*mu*energy + lambda*energy.trace()*I);
