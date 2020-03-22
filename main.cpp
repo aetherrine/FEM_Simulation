@@ -65,7 +65,7 @@ void loadTetGen(std::vector<Particle*>& particle_list, std::vector<Triangle*>& t
             if (result[0] == "#")
                 continue;
 
-            Vector3f vertex(std::stof(result[1]), std::stof(result[2])+3.0, std::stof(result[3]));
+            Vector3f vertex(std::stof(result[1]), std::stof(result[2])+1.0, std::stof(result[3]));
             Particle* p = new Particle(vertex, std::stoi(result[0]));
             particle_list.push_back(p);
         }
@@ -117,22 +117,25 @@ void loadTetGen(std::vector<Particle*>& particle_list, std::vector<Triangle*>& t
     }
 }
 
-void precomputation(std::vector<Tetrahedral*> meshes, std::vector<Matrix3f>& B, std::vector<float>& W){
+void precomputation(std::vector<Tetrahedral*>& meshes, std::vector<Matrix3f>& B, std::vector<float>& W){
     for (int i=0; i<meshes.size(); i++){
         Matrix3f D_m;
         D_m << meshes[i]->v[0]->x()-meshes[i]->v[3]->x(), meshes[i]->v[1]->x()-meshes[i]->v[3]->x(), meshes[i]->v[2]->x()-meshes[i]->v[3]->x(),
                meshes[i]->v[0]->y()-meshes[i]->v[3]->y(), meshes[i]->v[1]->y()-meshes[i]->v[3]->y(), meshes[i]->v[2]->y()-meshes[i]->v[3]->y(),
                meshes[i]->v[0]->z()-meshes[i]->v[3]->z(), meshes[i]->v[1]->z()-meshes[i]->v[3]->z(), meshes[i]->v[2]->z()-meshes[i]->v[3]->z();
 
-        B.push_back(1.0/6.0 * D_m.inverse());
-        W.push_back(1.0/6.0 * D_m.determinant());
+        B.push_back(D_m.inverse());
+        W.push_back(1.0/6.0 * std::abs(D_m.determinant()));
     }
 }
 
 Matrix3f VK_material(Matrix3f deform_grad){
     Matrix3f I = Matrix3f::Identity(3,3);
+    float mu = 300000.f / (2.0 * (1.0 + 0.3));
+    float lambda = (300000.f * 0.3) / ((1.0 + 0.3) * (1.0 - 2.0 * 0.3));
+
     Matrix3f energy = 0.5 * (deform_grad.transpose()*deform_grad - I);
-    Matrix3f P = deform_grad * (2.0*0.1785*energy + 0.7141*energy.trace()*I);
+    Matrix3f P = deform_grad * (2.0*mu*energy + lambda*energy.trace()*I);
     return P;
 }
 
@@ -162,12 +165,14 @@ Matrix3f Neohookean(Matrix3f deform_grad){
     
     // Stable Neohookean
     // Reference: https://graphics.pixar.com/library/StableElasticity/paper.pdf
+    float mu = 300000.f / (2 * (1 + 0.3));
+    float lambda = (300000.f * 0.3) / ((1 + 0.3) * (1 - 2 * 0.3));
     float det = deform_grad.determinant();
-    Matrix3f P = 0.1785*deform_grad + det*(0.7141*(det-1)-0.1785)*(deform_grad.transpose().inverse());
+    Matrix3f P = mu*deform_grad + det*(lambda*(det-1)-mu)*(deform_grad.transpose().inverse());
     return P;
 }
 
-void ComputeElasticForces(std::vector<Tetrahedral*> new_meshes, std::vector<Matrix3f>& B, std::vector<float>& W){
+void ComputeElasticForces(std::vector<Tetrahedral*>& new_meshes, std::vector<Matrix3f>& B, std::vector<float>& W){
     for (int i=0; i<new_meshes.size(); i++){
         Matrix3f D_s;
         D_s << new_meshes[i]->v[0]->x()-new_meshes[i]->v[3]->x(), new_meshes[i]->v[1]->x()-new_meshes[i]->v[3]->x(), new_meshes[i]->v[2]->x()-new_meshes[i]->v[3]->x(),
@@ -175,6 +180,12 @@ void ComputeElasticForces(std::vector<Tetrahedral*> new_meshes, std::vector<Matr
                new_meshes[i]->v[0]->z()-new_meshes[i]->v[3]->z(), new_meshes[i]->v[1]->z()-new_meshes[i]->v[3]->z(), new_meshes[i]->v[2]->z()-new_meshes[i]->v[3]->z();
 
         Matrix3f deform_grad = D_s * B[i];
+        for (int i=0; i<3; i++){
+            for (int j=0; j<3; j++){
+                if (std::abs(deform_grad(i,j)) < 1e-12)
+                    deform_grad(i,j) = 0.f;
+            }
+        }
 
         Matrix3f P = VK_material(deform_grad);
         // Matrix3f P = PK_stress_tensor_corotated(deform_grad);
@@ -188,7 +199,7 @@ void ComputeElasticForces(std::vector<Tetrahedral*> new_meshes, std::vector<Matr
     }
 }
 
-void ComputeForceDifferentials(std::vector<Tetrahedral*> new_meshes, std::vector<Matrix3f>& B, std::vector<float>& W){
+void ComputeForceDifferentials(std::vector<Tetrahedral*>& new_meshes, std::vector<Matrix3f>& B, std::vector<float>& W){
     for (int i=0; i<new_meshes.size(); i++){
         Matrix3f D_s;
         D_s << new_meshes[i]->v[0]->x()-new_meshes[i]->v[3]->x(), new_meshes[i]->v[1]->x()-new_meshes[i]->v[3]->x(), new_meshes[i]->v[2]->x()-new_meshes[i]->v[3]->x(),
@@ -217,36 +228,33 @@ void ComputeForceDifferentials(std::vector<Tetrahedral*> new_meshes, std::vector
     }
 }
 
-void resetForce(std::vector<Particle*> particles){
-    for (auto p:particles)
-        p->force = Vector3f(0,0,0);
+void resetForce(std::vector<Particle*>& particles){
+    for (auto& p:particles)
+        p->force = Vector3f(0.f,0.f,0.f);
 }
 
-void exertForce(std::vector<Particle*> particles){
-    Vector3f gravity(0, -0.98, 0);
-    for (auto p:particles){
+void exertForce(std::vector<Particle*>& particles){
+    Vector3f gravity(0.f, -9.8, 0.f);
+    for (auto& p:particles){
         p->force += gravity * p->mass;
     }
 }
 
-void collision(std::vector<Particle*> particles, float dt){
-    for (auto p:particles){
-        if (p->position[1] <= 0){
-            p->velocity = -p->velocity;
-        }
-    }
+void collision(Particle* p){
+    if (p->position[1] < 0.f)
+        p->velocity = Vector3f(0.f,0.f,0.f);
 }
 
-void forwardEuler(std::vector<Particle*> particles, float dt){
-    collision(particles, dt);
-    for (auto p:particles){
+void forwardEuler(std::vector<Particle*>& particles, float dt){
+    for (auto& p:particles){
         p->velocity += p->force / p->mass * dt;
+        collision(p);
         p->position += p->velocity * dt;
     }
 }
 
-void backwardEuler(std::vector<Particle*> particles, float dt){
-    collision(particles, dt);
+void backwardEuler(std::vector<Particle*>& particles, float dt){
+
 }
 
 bool compareVertex(Particle* p1, Particle* p2) {
@@ -332,18 +340,13 @@ int main(){
     std::vector<Matrix3f> B_m;
     precomputation(tetrahedral_list, B_m, undeformed_vol);
 
-    // for (int t=18; t<24; t++){
-    //     particle_list[t]->force[1] -= 1;
-    // }
-    // particle_list[24]->force[1] -= 1;
-    // particle_list[25]->force[1] -= 1;
-    // particle_list[26]->force[1] -= 1;
-    // for (auto vertex:particle_list)
-    //     vertex->position += Vector3f(0,-1,0);
+    // for (auto i : undeformed_vol)
+    //     std::cout<<i<<std::endl;
+    // return 0;
 
-    float delta_t = 0.01;
-    for (int i=0; i<100; i++){
-        for (int j=0; j<5; j++){
+    float delta_t = 1e-4;
+    for (int i=0; i<60; i++){
+        for (float time_step=0; time_step<1.f/24.f; time_step+=delta_t){
             resetForce(particle_list);
             exertForce(particle_list);
             ComputeElasticForces(tetrahedral_list, B_m, undeformed_vol);
@@ -351,6 +354,7 @@ int main(){
             // backwardEuler(particle_list, delta_t);
         }
         outputOBJ_tetGen(particle_list, triangle_list, i);
+        std::cout<<i<<"th obj\n";
     }
 
 
